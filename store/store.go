@@ -6,26 +6,29 @@ import (
 
 type Store struct {
 	mu   sync.Mutex
-	data map[string]string
+	data map[string]bool
+	// Technically I could be 'clever' and be slightly more efficient
+	// (in theory) by using an 'interface{}' here instead of a bool...
+	// but I don't think it's worth the extra complexity here.
 }
 
 func NewStore() Store {
 	return Store{
-		data: make(map[string]string),
+		data: make(map[string]bool),
 	}
 }
 
-func (s *Store) Get(key string) (string, bool) {
+func (s *Store) Get(key string) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	val, exists := s.data[key]
-	return val, exists
+	_, exists := s.data[key]
+	return exists
 }
 
-func (s *Store) Put(k, v string) {
+func (s *Store) Put(k string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	s.data[k] = v
+	s.data[k] = true
 }

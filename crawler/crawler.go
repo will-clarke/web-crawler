@@ -17,8 +17,8 @@ type webCrawler struct {
 // TODO: this Store interface is a bit idealistic.
 // For a real store we'd reality want to do some error-handling.
 type Store interface {
-	Put(string) string
-	Get(string) string
+	Get(string) bool
+	Put(string)
 }
 
 func (c *webCrawler) CrawlWeb() error {
