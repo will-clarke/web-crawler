@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 type Servable interface {
@@ -18,5 +19,20 @@ func SetupRouter() Servable {
 			"status": "ok",
 		})
 	})
+
+	r.GET("/crawl/:id", func(c *gin.Context) {
+		crawlID := c.Param("id")
+		c.JSON(200, gin.H{
+			"crawlID": crawlID,
+		})
+	})
+
+	r.POST("/crawl", func(c *gin.Context) {
+		id := uuid.NewString()
+		c.JSON(200, gin.H{
+			"randomID": id,
+		})
+	})
+
 	return r
 }
