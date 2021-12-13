@@ -32,3 +32,14 @@ func (s *Store) Put(k string) {
 
 	s.data[k] = true
 }
+
+func (s *Store) GetAllKeys() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	keys := []string{}
+	for k := range s.data {
+		keys = append(keys, k)
+	}
+	return keys
+}
