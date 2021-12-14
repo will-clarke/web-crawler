@@ -9,51 +9,106 @@ import (
 
 func TestStore(t *testing.T) {
 	tests := []struct {
-		name string
-		data []string
-		key  string
-		want bool
+		name      string
+		data      map[string]map[string]bool
+		namespace string
+		key       string
+		want      bool
 	}{
 		{
 			name: "with a map that includes the key it can find the key",
-			data: []string{"the-key"},
-			key:  "the-key",
-			want: true,
+			data: map[string]map[string]bool{
+				"aaa": map[string]bool{
+					"the-key": true,
+				},
+			},
+			namespace: "aaa",
+			key:       "the-key",
+			want:      true,
 		},
 		{
 			name: "with a large map that includes the key it can find the key",
-			data: []string{"aaaaaa", "another distraction", "the-key", "zzzzzz"},
-			key:  "the-key",
-			want: true,
+			data: map[string]map[string]bool{
+				"aaa": map[string]bool{
+					"aaaaaaaa":            true,
+					"the-key":             true,
+					"another distraction": true,
+				},
+
+				"zzz": map[string]bool{
+					"zzzzzzzzz": true,
+				},
+			},
+			namespace: "aaa",
+			key:       "the-key",
+			want:      true,
 		},
 		{
 			name: "it can't find the key if it doesn't exist",
-			data: []string{"aaaaaa", "another distraction", "zzzzzz"},
-			key:  "the-key",
-			want: false,
+			data: map[string]map[string]bool{
+				"aaa": map[string]bool{
+					"aaaaaaaa":            true,
+					"another distraction": true,
+				},
+
+				"zzz": map[string]bool{
+					"zzzzzzzzz": true,
+				},
+			},
+			namespace: "aaa",
+			key:       "the-key",
+			want:      false,
 		},
 		{
-			name: "with nothing going on it doesn't find an empty string",
-			data: []string{},
-			key:  "",
-			want: false,
+			name: "with a large map that includes the key in a different namespace",
+			data: map[string]map[string]bool{
+				"aaa": map[string]bool{
+					"aaaaaaaa":            true,
+					"the-key":             true,
+					"another distraction": true,
+				},
+
+				"zzz": map[string]bool{
+					"zzzzzzzzz": true,
+				},
+			},
+			namespace: "zzz",
+			key:       "the-key",
+			want:      false,
 		},
 		{
-			name: "with nothing going on it doesn't find a specific key",
-			data: []string{},
-			key:  "a random key",
-			want: false,
+			name:      "with no namespace or key it can't find an empty string",
+			data:      map[string]map[string]bool{},
+			namespace: "",
+			key:       "",
+			want:      false,
+		},
+		{
+			name:      "with no key on it doesn't find an empty string",
+			data:      map[string]map[string]bool{},
+			namespace: "aaa",
+			key:       "",
+			want:      false,
+		},
+		{
+			name:      "with no key on it doesn't find an empty string",
+			data:      map[string]map[string]bool{},
+			namespace: "aaa",
+			key:       "this doesn't exist either",
+			want:      false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := store.NewStore()
 
-			for _, str := range tt.data {
-				s.Put(str)
+			for namespace, namespaceMap := range tt.data {
+				for key := range namespaceMap {
+					s.Put(namespace, key)
+				}
 			}
 
-			ok := s.Get(tt.key)
+			ok := s.Get(tt.namespace, tt.key)
 			assert.Equal(t, tt.want, ok)
 		})
 	}
@@ -86,11 +141,13 @@ func TestStore_GetAllKeys(t *testing.T) {
 			s := store.NewStore()
 
 			for _, str := range tt.data {
-				s.Put(str)
+				s.Put("a", str)
 			}
 
-			keys := s.GetAllKeys()
+			keys := s.GetAllKeys("a")
 			assert.ElementsMatch(t, tt.want, keys)
+			keysForWrongNamespace := s.GetAllKeys("z")
+			assert.Empty(t, keysForWrongNamespace)
 		})
 	}
 }

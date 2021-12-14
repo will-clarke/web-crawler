@@ -21,9 +21,9 @@ type WebCrawler struct {
 // TODO: this Store interface is a bit idealistic.
 // For a real store we'd reality want to do some error-handling.
 type URLStore interface {
-	Get(string) bool
-	Put(string)
-	GetAllKeys() []string
+	Get(string, string) bool
+	Put(string, string)
+	GetAllKeys(string) []string
 }
 
 func (c *WebCrawler) StartWebCrawl() error {
@@ -36,35 +36,36 @@ func (c *WebCrawler) StartWebCrawl() error {
 	return nil
 }
 
-func (c *WebCrawler) alreadyCrawledPage(u string) bool {
-	return c.UrlStore.Get(u)
+func (c *WebCrawler) alreadyCrawledPage(s string) bool {
+	return c.UrlStore.Get(c.ID.String(), s)
 }
 
-func (c *WebCrawler) Crawl(u string) error {
+func (c *WebCrawler) Crawl(s string) error {
 	time.Sleep(time.Millisecond * 500) // TODO: remove this... just tmp for testing so we don't go mental
 
-	if c.alreadyCrawledPage(u) {
+	if c.alreadyCrawledPage(s) {
 		return nil
 	}
 
-	links, err := c.GetLinksFromURL(u)
+	links, err := c.GetLinksFromURL(s)
 	if err != nil {
 		// TODO: better logging
 		return err
 	}
 	for _, link := range links {
-		c.UrlStore.Put(link)
+		c.UrlStore.Put(c.ID.String(), link)
 	}
 
-	// TODO: MAKE THIS RECURSIVE OR SOMETHING
+	//  TODO: MAKE THIS RECURSIVE OR SOMETHING
+	//  GOROUTINES?????
 
 	return nil
 }
 
-func (c *WebCrawler) GetLinksFromURL(u string) ([]string, error) {
+func (c *WebCrawler) GetLinksFromURL(s string) ([]string, error) {
 	links := []string{}
 
-	resp, err := c.HttpClient.Get(u)
+	resp, err := c.HttpClient.Get(s)
 	if err != nil {
 		// TODO: maybe wrap error
 		return nil, err

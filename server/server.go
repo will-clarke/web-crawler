@@ -14,9 +14,9 @@ type Servable interface {
 }
 
 type URLStore interface {
-	Get(string) bool
-	Put(string)
-	GetAllKeys() []string
+	Get(string, string) bool
+	Put(string, string)
+	GetAllKeys(string) []string
 }
 
 type crawlRequest struct {
@@ -35,7 +35,7 @@ func SetupRouter(s URLStore) Servable {
 		crawlID := c.Param("id")
 		c.JSON(200, gin.H{
 			"id":    crawlID,
-			"links": s.GetAllKeys(),
+			"links": s.GetAllKeys(crawlID),
 		})
 	})
 
