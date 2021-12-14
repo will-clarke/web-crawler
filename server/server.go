@@ -19,6 +19,10 @@ type URLStore interface {
 	GetAllKeys() []string
 }
 
+type crawlRequest struct {
+	Url string `json:"url" binding:"required"`
+}
+
 func SetupRouter(s URLStore) Servable {
 	r := gin.Default()
 	r.GET("/healthcheck", func(c *gin.Context) {
@@ -34,17 +38,22 @@ func SetupRouter(s URLStore) Servable {
 		})
 	})
 
-	r.POST("/crawl/:url", func(c *gin.Context) {
-		url := c.Param("url")
+	r.POST("/crawl", func(c *gin.Context) {
+		var request crawlRequest
+		err := c.ShouldBindJSON(&request)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
 		id := uuid.New()
 
 		webCrawler := crawler.WebCrawler{
-			InitialURL: url,
+			InitialURL: request.Url,
 			UrlStore:   s,
 			HttpClient: http.DefaultClient,
 			ID:         id,
 		}
-		err := webCrawler.StartWebCrawl()
+		err = webCrawler.StartWebCrawl()
 
 		c.JSON(200, gin.H{
 			"id":  id.String(),
