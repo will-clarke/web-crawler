@@ -2,16 +2,21 @@ package crawler
 
 import (
 	"fmt"
-	"net/url"
+	"log"
+	"net/http"
+	"strings"
 	"time"
+
+	"github.com/PuerkitoBio/goquery"
 )
 
-type webCrawler struct {
-	url            string
+type WebCrawler struct {
+	InitialURL     string
 	linkCountLimit int
 	timeLimit      time.Duration
 	ignoreErrs     bool
 	urlStore       URLStore
+	HttpClient     *http.Client
 }
 
 // TODO: this Store interface is a bit idealistic.
@@ -22,14 +27,8 @@ type URLStore interface {
 	GetAllKeys() []string
 }
 
-func (c *webCrawler) CrawlWebStart() ([]string, error) {
-	rawURL := c.url
-	url, err := url.Parse(rawURL)
-	if err != nil {
-		// TODO: better logging or whatever
-		return nil, err
-	}
-	err = c.CrawlWeb(url)
+func (c *WebCrawler) StartWebCrawl() ([]string, error) {
+	err := c.Crawl(c.InitialURL)
 	if err != nil {
 		// TODO: better logging
 		return nil, err
@@ -38,11 +37,11 @@ func (c *webCrawler) CrawlWebStart() ([]string, error) {
 	return c.urlStore.GetAllKeys(), nil
 }
 
-func (c *webCrawler) alreadyCrawledPage(u *url.URL) bool {
-	return c.urlStore.Get(u.String())
+func (c *WebCrawler) alreadyCrawledPage(u string) bool {
+	return c.urlStore.Get(u)
 }
 
-func (c *webCrawler) CrawlWeb(u *url.URL) error {
+func (c *WebCrawler) Crawl(u string) error {
 	time.Sleep(time.Millisecond * 500) // TODO: remove this... just tmp for testing so we don't go mental
 
 	if c.alreadyCrawledPage(u) {
@@ -58,6 +57,50 @@ func (c *webCrawler) CrawlWeb(u *url.URL) error {
 	return nil
 }
 
-func (c *webCrawler) GetLinksFromURL(u *url.URL) ([]*url.URL, error) {
-	return nil, nil
+func (c *WebCrawler) GetLinksFromURL(u string) ([]string, error) {
+	links := []string{}
+
+	resp, err := c.HttpClient.Get(u)
+	if err != nil {
+		// TODO: maybe wrap error
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		log.Fatalf("status code error: %d %s", resp.StatusCode, resp.Status)
+		return nil, err
+	}
+
+	doc, err := goquery.NewDocumentFromReader(resp.Body)
+	if err != nil {
+		fmt.Println(err)
+	}
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Find the review items
+	doc.Find("a").Each(func(i int, s *goquery.Selection) {
+		a, _ := s.Attr("href")
+
+		if a != "" {
+			links = append(links, a)
+		}
+
+	})
+
+	return links, nil
+}
+
+// IsInternalLink is a slightly hacky way of determining whether
+// a given link is internal
+func (c *WebCrawler) IsInternalLink(l string) bool {
+	if strings.HasPrefix(l, "/") {
+		return true // is likely a relative url
+	}
+	if strings.HasPrefix(l, c.InitialURL) {
+		return true // starts with the same domain name
+	}
+	return false
 }
