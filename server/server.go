@@ -34,7 +34,8 @@ func SetupRouter(s URLStore) Servable {
 	r.GET("/crawl/:id", func(c *gin.Context) {
 		crawlID := c.Param("id")
 		c.JSON(200, gin.H{
-			"crawlID": crawlID,
+			"id":    crawlID,
+			"links": s.GetAllKeys(),
 		})
 	})
 
@@ -56,8 +57,8 @@ func SetupRouter(s URLStore) Servable {
 		err = webCrawler.StartWebCrawl()
 
 		c.JSON(200, gin.H{
-			"id":  id.String(),
-			"err": err,
+			"id":    id.String(),
+			"error": err,
 			// probably should't be exposing our error messages...
 		})
 	})

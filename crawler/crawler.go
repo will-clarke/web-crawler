@@ -48,11 +48,16 @@ func (c *WebCrawler) Crawl(u string) error {
 	}
 
 	links, err := c.GetLinksFromURL(u)
-	fmt.Printf("links: %+v\n", links)
 	if err != nil {
 		// TODO: better logging
 		return err
 	}
+	for _, link := range links {
+		c.UrlStore.Put(link)
+	}
+
+	// TODO: MAKE THIS RECURSIVE OR SOMETHING
+
 	return nil
 }
 
