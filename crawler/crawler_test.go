@@ -65,7 +65,8 @@ func Test_webCrawler_GetLinksFromURL(t *testing.T) {
 				http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 					htmlBytes, err := ioutil.ReadFile(tt.htmlFilePath)
 					assert.NoError(t, err)
-					w.Write(htmlBytes)
+					_, err = w.Write(htmlBytes)
+					assert.NoError(t, err)
 				}),
 			)
 			defer stubbedServer.Close()

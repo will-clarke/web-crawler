@@ -1,9 +1,16 @@
 package main
 
-import "git.sr.ht/~will-clarke/web-crawler/server"
+import (
+	"log"
+
+	"git.sr.ht/~will-clarke/web-crawler/server"
+)
 
 func main() {
 	router := server.SetupRouter()
-	router.Run()
+	err := router.Run()
+	if err != nil {
+		log.Fatal("router errored", err)
+	}
 	// listen and serve on 0.0.0.0:8080 (for windows "localhost:8080")
 }

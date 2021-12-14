@@ -11,12 +11,9 @@ import (
 )
 
 type WebCrawler struct {
-	InitialURL     string
-	linkCountLimit int
-	timeLimit      time.Duration
-	ignoreErrs     bool
-	urlStore       URLStore
-	HttpClient     *http.Client
+	InitialURL string
+	UrlStore   URLStore
+	HttpClient *http.Client
 }
 
 // TODO: this Store interface is a bit idealistic.
@@ -27,18 +24,18 @@ type URLStore interface {
 	GetAllKeys() []string
 }
 
-func (c *WebCrawler) StartWebCrawl() ([]string, error) {
+func (c *WebCrawler) StartWebCrawl() error {
 	err := c.Crawl(c.InitialURL)
 	if err != nil {
 		// TODO: better logging
-		return nil, err
+		return err
 	}
 
-	return c.urlStore.GetAllKeys(), nil
+	return nil
 }
 
 func (c *WebCrawler) alreadyCrawledPage(u string) bool {
-	return c.urlStore.Get(u)
+	return c.UrlStore.Get(u)
 }
 
 func (c *WebCrawler) Crawl(u string) error {

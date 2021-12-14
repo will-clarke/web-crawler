@@ -60,8 +60,6 @@ func TestStore(t *testing.T) {
 }
 
 func TestStore_GetAllKeys(t *testing.T) {
-	type fields struct {
-	}
 	tests := []struct {
 		name string
 		data []string
