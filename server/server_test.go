@@ -1,16 +1,18 @@
 package server_test
 
 import (
-	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"git.sr.ht/~will-clarke/web-crawler/server"
+	"git.sr.ht/~will-clarke/web-crawler/store"
 )
 
 func TestPingRoute(t *testing.T) {
-	router := server.SetupRouter()
+	router := server.SetupRouter(store.NewStore())
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "/healthcheck", nil)

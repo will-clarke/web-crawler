@@ -4,10 +4,13 @@ import (
 	"log"
 
 	"git.sr.ht/~will-clarke/web-crawler/server"
+	"git.sr.ht/~will-clarke/web-crawler/store"
 )
 
 func main() {
-	router := server.SetupRouter()
+	s := store.NewStore()
+	router := server.SetupRouter(s)
+
 	err := router.Run()
 	if err != nil {
 		log.Fatal("router errored", err)

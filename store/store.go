@@ -12,8 +12,8 @@ type Store struct {
 	// but I don't think it's worth the extra complexity here.
 }
 
-func NewStore() Store {
-	return Store{
+func NewStore() *Store {
+	return &Store{
 		data: make(map[string]bool),
 	}
 }

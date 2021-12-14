@@ -3,6 +3,7 @@ package server
 import (
 	"net/http"
 
+	"git.sr.ht/~will-clarke/web-crawler/crawler"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
@@ -12,7 +13,13 @@ type Servable interface {
 	ServeHTTP(w http.ResponseWriter, req *http.Request)
 }
 
-func SetupRouter() Servable {
+type URLStore interface {
+	Get(string) bool
+	Put(string)
+	GetAllKeys() []string
+}
+
+func SetupRouter(s URLStore) Servable {
 	r := gin.Default()
 	r.GET("/healthcheck", func(c *gin.Context) {
 		c.JSON(200, gin.H{
@@ -27,10 +34,22 @@ func SetupRouter() Servable {
 		})
 	})
 
-	r.POST("/crawl", func(c *gin.Context) {
-		id := uuid.NewString()
+	r.POST("/crawl/:url", func(c *gin.Context) {
+		url := c.Param("url")
+		id := uuid.New()
+
+		webCrawler := crawler.WebCrawler{
+			InitialURL: url,
+			UrlStore:   s,
+			HttpClient: http.DefaultClient,
+			ID:         id,
+		}
+		err := webCrawler.StartWebCrawl()
+
 		c.JSON(200, gin.H{
-			"randomID": id,
+			"id":  id.String(),
+			"err": err,
+			// probably should't be exposing our error messages...
 		})
 	})
 

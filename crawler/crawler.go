@@ -8,12 +8,14 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/google/uuid"
 )
 
 type WebCrawler struct {
 	InitialURL string
 	UrlStore   URLStore
 	HttpClient *http.Client
+	ID         uuid.UUID
 }
 
 // TODO: this Store interface is a bit idealistic.
