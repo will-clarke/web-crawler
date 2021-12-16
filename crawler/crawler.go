@@ -2,8 +2,8 @@ package crawler
 
 import (
 	"fmt"
-	"log"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -12,10 +12,25 @@ import (
 )
 
 type WebCrawler struct {
-	InitialURL string
 	UrlStore   URLStore
-	HttpClient *http.Client
 	ID         uuid.UUID
+	host       string
+	scheme     string
+	httpClient *http.Client
+}
+
+func NewWebCrawler(urlStore URLStore, id uuid.UUID, initialURL string) (*WebCrawler, error) {
+	parsedURL, err := url.Parse(initialURL)
+	if err != nil {
+		return nil, err
+	}
+	return &WebCrawler{
+		UrlStore:   urlStore,
+		ID:         id,
+		host:       parsedURL.Host,
+		scheme:     parsedURL.Scheme,
+		httpClient: http.DefaultClient,
+	}, nil
 }
 
 // TODO: this Store interface is a bit idealistic.
@@ -26,66 +41,60 @@ type URLStore interface {
 	GetAllKeys(string) []string
 }
 
-func (c *WebCrawler) StartWebCrawl() error {
-	err := c.Crawl(c.InitialURL)
-	if err != nil {
-		// TODO: better logging
-		return err
-	}
-
-	return nil
-}
-
 func (c *WebCrawler) alreadyCrawledPage(s string) bool {
 	return c.UrlStore.Get(c.ID.String(), s)
 }
 
-func (c *WebCrawler) Crawl(s string) error {
+func (c *WebCrawler) Crawl(s string) {
 	time.Sleep(time.Millisecond * 500) // TODO: remove this... just tmp for testing so we don't go mental
 
 	if c.alreadyCrawledPage(s) {
-		return nil
+		return
 	}
 
+	// we're telling our store that we've
+	// visited this page
+	c.UrlStore.Put(c.ID.String(), s)
 	links, err := c.GetLinksFromURL(s)
 	if err != nil {
-		// TODO: better logging
-		return err
+		fmt.Printf("error getting links from url: %s\n", err.Error())
+		return
 	}
 	for _, link := range links {
-		c.UrlStore.Put(c.ID.String(), link)
+		if c.IsInternalLink(link) {
+			go c.Crawl(link)
+		}
 	}
-
-	//  TODO: MAKE THIS RECURSIVE OR SOMETHING
-	//  GOROUTINES?????
-
-	return nil
 }
 
 func (c *WebCrawler) GetLinksFromURL(s string) ([]string, error) {
 	links := []string{}
 
-	resp, err := c.HttpClient.Get(s)
+	req, err := http.NewRequest(http.MethodGet, s, nil)
 	if err != nil {
-		// TODO: maybe wrap error
+		return nil, err
+	}
+
+	// some cases to cover any relative links
+	req.URL.Scheme = c.scheme
+	req.URL.Host = c.host
+	req.Host = c.host
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
 		return nil, err
 	}
 
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
-		log.Fatalf("status code error: %d %s", resp.StatusCode, resp.Status)
-		return nil, err
+		return nil, fmt.Errorf("bad status code: %d %s", resp.StatusCode, resp.Status)
 	}
 
 	doc, err := goquery.NewDocumentFromReader(resp.Body)
 	if err != nil {
-		fmt.Println(err)
-	}
-	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
-	// Find the review items
 	doc.Find("a").Each(func(i int, s *goquery.Selection) {
 		a, _ := s.Attr("href")
 
@@ -104,7 +113,7 @@ func (c *WebCrawler) IsInternalLink(l string) bool {
 	if strings.HasPrefix(l, "/") {
 		return true // is likely a relative url
 	}
-	if strings.HasPrefix(l, c.InitialURL) {
+	if strings.Contains(l, c.host) {
 		return true // starts with the same domain name
 	}
 	return false

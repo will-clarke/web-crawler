@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"git.sr.ht/~will-clarke/web-crawler/crawler"
+	"git.sr.ht/~will-clarke/web-crawler/store"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -57,9 +59,6 @@ func Test_webCrawler_GetLinksFromURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := crawler.WebCrawler{
-				HttpClient: http.DefaultClient,
-			}
 
 			stubbedServer := httptest.NewServer(
 				http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -70,6 +69,9 @@ func Test_webCrawler_GetLinksFromURL(t *testing.T) {
 				}),
 			)
 			defer stubbedServer.Close()
+
+			c, err := crawler.NewWebCrawler(store.NewStore(), uuid.New(), stubbedServer.URL)
+			assert.NoError(t, err)
 
 			links, err := c.GetLinksFromURL(stubbedServer.URL)
 			assert.Equal(t, links, tt.expectedLinks)
@@ -106,9 +108,8 @@ func TestWebCrawler_IsInternalLink(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := &crawler.WebCrawler{
-				InitialURL: tt.initialURL,
-			}
+			c, err := crawler.NewWebCrawler(store.NewStore(), uuid.New(), tt.initialURL)
+			assert.NoError(t, err)
 			isInternal := c.IsInternalLink(tt.link)
 			assert.Equal(t, tt.expectedIsInternal, isInternal)
 		})
