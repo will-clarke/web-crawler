@@ -98,7 +98,7 @@ func (c *WebCrawler) GetLinksFromURL(internalURL string) ([]string, error) {
 
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("bad status code: %d %s", resp.StatusCode, resp.Status)
+		return nil, fmt.Errorf("bad status code for link '%s' - %s", internalURL, resp.Status)
 	}
 
 	// we're using a fab 3rd party HTML parser to get all the links
