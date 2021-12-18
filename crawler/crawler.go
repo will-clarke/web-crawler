@@ -11,6 +11,8 @@ import (
 	"github.com/google/uuid"
 )
 
+// WebCrawler is a struct that will crawl any *internal* links
+// once we call `Crawl`.
 type WebCrawler struct {
 	UrlStore   URLStore
 	ID         uuid.UUID
@@ -19,6 +21,17 @@ type WebCrawler struct {
 	httpClient *http.Client
 }
 
+// URLStore is an interface that `Store` implements (../store/store.go).
+// We need this to keep track of which URLs we've already visited.
+type URLStore interface {
+	Exists(string, string) bool
+	Put(string, string)
+	GetAllKeys(string) []string
+}
+
+// NewWebCrawler is a constructor for WebCrawler.
+// It has some logic to work out the host/scheme
+// of a URL, which is useful for crawling relative links.
 func NewWebCrawler(urlStore URLStore, id uuid.UUID, initialURL string) (*WebCrawler, error) {
 	parsedURL, err := url.Parse(initialURL)
 	if err != nil {
@@ -33,33 +46,29 @@ func NewWebCrawler(urlStore URLStore, id uuid.UUID, initialURL string) (*WebCraw
 	}, nil
 }
 
-// TODO: this Store interface is a bit idealistic.
-// For a real store we'd reality want to do some error-handling.
-type URLStore interface {
-	Get(string, string) bool
-	Put(string, string)
-	GetAllKeys(string) []string
-}
+// Crawl is the main function in this module. It recursively
+// crawls through all internal links.
+func (c *WebCrawler) Crawl(internalURL string) {
+	time.Sleep(time.Millisecond * 50)
 
-func (c *WebCrawler) alreadyCrawledPage(s string) bool {
-	return c.UrlStore.Get(c.ID.String(), s)
-}
-
-func (c *WebCrawler) Crawl(s string) {
-	time.Sleep(time.Millisecond * 500) // TODO: remove this... just tmp for testing so we don't go mental
-
-	if c.alreadyCrawledPage(s) {
+	// return early if we've crawled the page. We don't want to
+	// waste time reading the same page and we could end up in an
+	// infinite loop :scream:
+	if c.alreadyCrawledPage(internalURL) {
 		return
 	}
 
-	// we're telling our store that we've
-	// visited this page
-	c.UrlStore.Put(c.ID.String(), s)
-	links, err := c.GetLinksFromURL(s)
+	// we're telling our store that we've visited this page
+	c.UrlStore.Put(c.ID.String(), internalURL)
+
+	// we're parsing the HTML from the given url
+	links, err := c.GetLinksFromURL(internalURL)
 	if err != nil {
 		fmt.Printf("error getting links from url: %s\n", err.Error())
 		return
 	}
+
+	// for every internal link, call this `crawl` function again
 	for _, link := range links {
 		if c.IsInternalLink(link) {
 			go c.Crawl(link)
@@ -67,10 +76,12 @@ func (c *WebCrawler) Crawl(s string) {
 	}
 }
 
-func (c *WebCrawler) GetLinksFromURL(s string) ([]string, error) {
+// GetLinksFromURL fetches the HTML for a given URL, parses it and then
+// extracts all the links.
+func (c *WebCrawler) GetLinksFromURL(internalURL string) ([]string, error) {
 	links := []string{}
 
-	req, err := http.NewRequest(http.MethodGet, s, nil)
+	req, err := http.NewRequest(http.MethodGet, internalURL, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -90,13 +101,14 @@ func (c *WebCrawler) GetLinksFromURL(s string) ([]string, error) {
 		return nil, fmt.Errorf("bad status code: %d %s", resp.StatusCode, resp.Status)
 	}
 
+	// we're using a fab 3rd party HTML parser to get all the links
 	doc, err := goquery.NewDocumentFromReader(resp.Body)
 	if err != nil {
 		return nil, err
 	}
 
-	doc.Find("a").Each(func(i int, s *goquery.Selection) {
-		a, _ := s.Attr("href")
+	doc.Find("a").Each(func(i int, internalURL *goquery.Selection) {
+		a, _ := internalURL.Attr("href")
 
 		if a != "" {
 			links = append(links, a)
@@ -108,13 +120,19 @@ func (c *WebCrawler) GetLinksFromURL(s string) ([]string, error) {
 }
 
 // IsInternalLink is a slightly hacky way of determining whether
-// a given link is internal
-func (c *WebCrawler) IsInternalLink(l string) bool {
-	if strings.HasPrefix(l, "/") {
+// a given link is internal.
+func (c *WebCrawler) IsInternalLink(s string) bool {
+	if strings.HasPrefix(s, "/") {
 		return true // is likely a relative url
 	}
-	if strings.Contains(l, c.host) {
+	if strings.Contains(s, c.host) {
 		return true // starts with the same domain name
 	}
 	return false
+}
+
+// alreadyCrawledPage uses our store to work out if we've already
+// crawled a given URL.
+func (c *WebCrawler) alreadyCrawledPage(internalURL string) bool {
+	return c.UrlStore.Exists(c.ID.String(), internalURL)
 }

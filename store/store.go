@@ -26,11 +26,13 @@ func NewStore() *Store {
 	}
 }
 
-func (s *Store) Get(namespace, key string) bool {
+// Exists will return whether an item exists stored first in
+// the (top-level) map, then in the second map.
+func (s *Store) Exists(namespaceKey, key string) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	mapForNamespace, exists := s.data[namespace]
+	mapForNamespace, exists := s.data[namespaceKey]
 	if !exists {
 		return false
 	}
@@ -38,13 +40,14 @@ func (s *Store) Get(namespace, key string) bool {
 	return exists
 }
 
-func (s *Store) Put(namespace, key string) {
+// Put will update the store;  the specific "namespaceKey" / "key" combination will now `Exist`.
+func (s *Store) Put(namespaceKey, key string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	mapForNamespace, exists := s.data[namespace]
+	mapForNamespace, exists := s.data[namespaceKey]
 	if !exists {
-		s.data[namespace] = map[string]bool{
+		s.data[namespaceKey] = map[string]bool{
 			key: true,
 		}
 		return
@@ -52,12 +55,13 @@ func (s *Store) Put(namespace, key string) {
 	mapForNamespace[key] = true
 }
 
-func (s *Store) GetAllKeys(namespace string) []string {
+// GetAllKeys returns all keys for a given namespace.
+func (s *Store) GetAllKeys(namespaceKey string) []string {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	keys := []string{}
-	for k := range s.data[namespace] {
+	for k := range s.data[namespaceKey] {
 		keys = append(keys, k)
 	}
 	return keys

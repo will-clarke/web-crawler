@@ -8,13 +8,17 @@ import (
 	"github.com/google/uuid"
 )
 
+const TopSecretUsername = "user"
+const TopSecretPassword = "pass"
+
 type Servable interface {
 	Run(...string) error
 	ServeHTTP(w http.ResponseWriter, req *http.Request)
 }
 
+// URLStore is implemented by Store (../store/store.go)
 type URLStore interface {
-	Get(string, string) bool
+	Exists(string, string) bool
 	Put(string, string)
 	GetAllKeys(string) []string
 }
@@ -23,12 +27,12 @@ type crawlRequest struct {
 	Url string `json:"url" binding:"required"`
 }
 
-func SetupRouter(s URLStore) Servable {
+func SetupRouter(store URLStore) Servable {
 	r := gin.Default()
 
 	// some super basic basic auth
 	auth := r.Group("/", gin.BasicAuth(gin.Accounts{
-		"user": "pass", // top secret credentials
+		TopSecretUsername: TopSecretPassword,
 	}))
 
 	r.GET("/healthcheck", func(c *gin.Context) {
@@ -41,31 +45,34 @@ func SetupRouter(s URLStore) Servable {
 		crawlID := c.Param("id")
 		c.JSON(200, gin.H{
 			"id":    crawlID,
-			"links": s.GetAllKeys(crawlID),
+			"links": store.GetAllKeys(crawlID),
 		})
 	})
 
 	auth.POST("/crawl", func(c *gin.Context) {
+		id := uuid.New()
 		var request crawlRequest
 		err := c.ShouldBindJSON(&request)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			c.JSON(http.StatusBadRequest, gin.H{
+				"id":    id.String(),
+				"error": err})
 			return
 		}
-		id := uuid.New()
 
-		webCrawler, err := crawler.NewWebCrawler(s, id, request.Url)
+		webCrawler, err := crawler.NewWebCrawler(store, id, request.Url)
 		if err != nil {
-			c.JSON(400, gin.H{"error": err})
+			c.JSON(http.StatusBadRequest, gin.H{
+				"id":    id.String(),
+				"error": err})
 			return
 		}
 
 		go webCrawler.Crawl(request.Url)
 
-		c.JSON(200, gin.H{
+		c.JSON(http.StatusOK, gin.H{
 			"id":    id.String(),
 			"error": err,
-			// probably should't be exposing our error messages...
 		})
 	})
 

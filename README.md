@@ -13,7 +13,7 @@ curl localhost:8080/healthcheck
 # Super important stuff we still need to do
 
 - [x] crawl more than one url
-- [ ] authentication
+- [x] authentication
 - [ ] web crawling limits. total request / time / something
 - [ ] main-loop error handling. Do we return any errors? Just log them?
 - [x] actually use goroutines

@@ -18,7 +18,7 @@ func TestStore(t *testing.T) {
 		{
 			name: "with a map that includes the key it can find the key",
 			data: map[string]map[string]bool{
-				"aaa": map[string]bool{
+				"aaa": {
 					"the-key": true,
 				},
 			},
@@ -29,13 +29,13 @@ func TestStore(t *testing.T) {
 		{
 			name: "with a large map that includes the key it can find the key",
 			data: map[string]map[string]bool{
-				"aaa": map[string]bool{
+				"aaa": {
 					"aaaaaaaa":            true,
 					"the-key":             true,
 					"another distraction": true,
 				},
 
-				"zzz": map[string]bool{
+				"zzz": {
 					"zzzzzzzzz": true,
 				},
 			},
@@ -46,12 +46,12 @@ func TestStore(t *testing.T) {
 		{
 			name: "it can't find the key if it doesn't exist",
 			data: map[string]map[string]bool{
-				"aaa": map[string]bool{
+				"aaa": {
 					"aaaaaaaa":            true,
 					"another distraction": true,
 				},
 
-				"zzz": map[string]bool{
+				"zzz": {
 					"zzzzzzzzz": true,
 				},
 			},
@@ -62,13 +62,13 @@ func TestStore(t *testing.T) {
 		{
 			name: "with a large map that includes the key in a different namespace",
 			data: map[string]map[string]bool{
-				"aaa": map[string]bool{
+				"aaa": {
 					"aaaaaaaa":            true,
 					"the-key":             true,
 					"another distraction": true,
 				},
 
-				"zzz": map[string]bool{
+				"zzz": {
 					"zzzzzzzzz": true,
 				},
 			},
@@ -108,7 +108,7 @@ func TestStore(t *testing.T) {
 				}
 			}
 
-			ok := s.Get(tt.namespace, tt.key)
+			ok := s.Exists(tt.namespace, tt.key)
 			assert.Equal(t, tt.want, ok)
 		})
 	}
